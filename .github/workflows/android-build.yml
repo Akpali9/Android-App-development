@@ -23,18 +23,30 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Write sdk.dir so AGP can find the Android SDK on the runner
-      - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
+      # Install the Android SDK build-tools and platform so AGP can compile
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Platform 34
+        run: |
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" --sdk_root=$ANDROID_SDK_ROOT
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # Force gradlew executable (survives GitHub web UI upload which strips permissions)
       - name: Make Gradlew Executable
         run: chmod +x ./gradlew
 
+      # Write local.properties with a verified, non-empty sdk.dir
+      - name: Write local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          echo "--- local.properties contents ---"
+          cat local.properties
+
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tail -100
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
