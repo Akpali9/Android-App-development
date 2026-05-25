@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - main
-  # Allow manual trigger from the Actions tab
   workflow_dispatch:
 
 jobs:
@@ -24,17 +23,19 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Write sdk.dir so AGP can find the Android SDK on the runner
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # gradlew is committed to the repo; make it executable
       - name: Make Gradlew Executable
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      # Upload the APK as a workflow artifact (downloadable from Actions tab)
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -44,7 +45,6 @@ jobs:
           retention-days: 30
 
   release:
-    # Only create a GitHub Release on pushes to main (not PRs)
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -55,7 +55,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Download the APK produced by the build job
       - name: Download APK artifact
         uses: actions/download-artifact@v4
         with:
@@ -75,7 +74,7 @@ jobs:
             ### ⬇️ Download
             Click **app-debug.apk** below to download and install.
 
-            > **Note:** You may need to enable *Install from unknown sources* on your device.
+            > **Note:** Enable *Install from unknown sources* on your device before installing.
           files: apk/app-debug.apk
           draft: false
           prerelease: false
