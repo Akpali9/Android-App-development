@@ -1,0 +1,81 @@
+name: Android APK Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # gradlew is committed to the repo; make it executable
+      - name: Make Gradlew Executable
+        run: chmod +x ./gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      # Upload the APK as a workflow artifact (downloadable from Actions tab)
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WealthIQ-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    # Only create a GitHub Release on pushes to main (not PRs)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Download the APK produced by the build job
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WealthIQ-debug-${{ github.run_number }}
+          path: apk/
+
+      - name: Create GitHub Release with APK download button
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "WealthIQ Build #${{ github.run_number }}"
+          body: |
+            ## WealthIQ Debug APK
+
+            Automated build from commit `${{ github.sha }}` on branch `main`.
+
+            ### ⬇️ Download
+            Click **app-debug.apk** below to download and install.
+
+            > **Note:** You may need to enable *Install from unknown sources* on your device.
+          files: apk/app-debug.apk
+          draft: false
+          prerelease: false
