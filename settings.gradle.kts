@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "wealthiq"
-include ':app'
+include ":app"
