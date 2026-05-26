@@ -12,6 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-
-rootProject.name = "wealthiq"
-include ":app"
+rootProject.name = "WealthIQ"
+include(":app")  
